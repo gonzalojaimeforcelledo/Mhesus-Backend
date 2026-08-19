@@ -1,0 +1,105 @@
+package com.mhesus.api.almacen.application;
+
+import com.mhesus.api.almacen.application.ProductoRequest;
+import com.mhesus.api.almacen.domain.MovimientoInventario;
+import com.mhesus.api.almacen.domain.Producto;
+import com.mhesus.api.almacen.domain.MovimientoInventarioRepository;
+import com.mhesus.api.almacen.domain.ProductoRepository;
+import com.mhesus.api.shared.util.IdGenerator;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ProductoService {
+    private final ProductoRepository productoRepository;
+    private final MovimientoInventarioRepository movimientoRepository;
+
+    public ProductoService(ProductoRepository productoRepository, MovimientoInventarioRepository movimientoRepository) {
+        this.productoRepository = productoRepository;
+        this.movimientoRepository = movimientoRepository;
+    }
+
+    public List<Producto> listar() {
+        return productoRepository.findAll();
+    }
+
+    public Optional<Producto> porId(String id) {
+        return productoRepository.findById(id);
+    }
+
+    public Optional<Producto> porCodigo(String codigo) {
+        return productoRepository.findByCodigoIgnoreCase(codigo);
+    }
+
+    public List<Producto> stockBajo() {
+        return productoRepository.findAll().stream().filter(p -> p.stockActual <= p.stockMinimo).toList();
+    }
+
+    public Producto crear(ProductoRequest req) {
+        Producto p = new Producto();
+        p.id = IdGenerator.generar("prod");
+        aplicar(p, req);
+        return productoRepository.save(p);
+    }
+
+    public Producto actualizar(String id, ProductoRequest req) {
+        Producto p = productoRepository.findById(id).orElseThrow();
+        aplicar(p, req);
+        return productoRepository.save(p);
+    }
+
+    private void aplicar(Producto p, ProductoRequest req) {
+        p.codigo = req.codigo();
+        p.codigoBarras = req.codigoBarras();
+        p.nombre = req.nombre();
+        p.categoria = req.categoria();
+        p.precio = req.precio();
+        p.stockActual = req.stockActual();
+        p.stockMinimo = req.stockMinimo();
+        p.lugar = req.lugar();
+    }
+
+    public void eliminar(String id) {
+        productoRepository.deleteById(id);
+    }
+
+    public Producto ajustarStock(String id, int delta, String usuarioId) {
+        Producto p = productoRepository.findById(id).orElseThrow();
+        p.stockActual += delta;
+        p = productoRepository.save(p);
+        registrarMovimiento(id, "ajuste", delta, null, usuarioId);
+        return p;
+    }
+
+    public void registrarMovimiento(String productoId, String tipo, int cantidad, String otId, String usuarioId) {
+        MovimientoInventario m = new MovimientoInventario();
+        m.id = IdGenerator.generar("mov");
+        m.productoId = productoId;
+        m.tipo = tipo;
+        m.cantidad = cantidad;
+        m.otId = otId;
+        m.usuarioId = usuarioId;
+        m.creadoEn = Instant.now().toString();
+        movimientoRepository.save(m);
+    }
+
+    public List<MovimientoInventario> movimientos() {
+        return movimientoRepository.findAll();
+    }
+
+    public record ResultadoUpsert(Producto producto, boolean creado) {}
+
+    /** Crea el producto si el código no existe, o actualiza sus datos si ya existe (usado por importación desde Excel). */
+    public ResultadoUpsert upsertPorCodigo(ProductoRequest req) {
+        Optional<Producto> existente = productoRepository.findByCodigoIgnoreCase(req.codigo());
+        if (existente.isPresent()) {
+            Producto p = existente.get();
+            aplicar(p, req);
+            return new ResultadoUpsert(productoRepository.save(p), false);
+        }
+        return new ResultadoUpsert(crear(req), true);
+    }
+}

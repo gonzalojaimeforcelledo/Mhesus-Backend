@@ -1,0 +1,42 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: mhesus-api
+
+  datasource:
+    # Conexión a Neon (no Supabase). Lo confirmamos con Test-NetConnection:
+    # esta red tiene IPv6 funcionando perfecto pero NO logra salir por IPv4
+    # (probablemente el ISP da una conexión IPv6-only) — Supabase (directo,
+    # Transaction Pooler y Session Pooler) resuelve todos a direcciones IPv4
+    # y por eso siempre daba timeout. Neon en cambio resolvió a una dirección
+    # IPv6 en la prueba y conectó al toque, por eso lo usamos.
+    url: jdbc:postgresql://ep-broad-tree-axzli7t1-pooler.c-4.us-east-2.aws.neon.tech:5432/neondb?sslmode=require&channel_binding=require
+    username: neondb_owner
+    password: "npg_YkbnOj14pVix"
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 10000  # 10s — si no conecta en ese tiempo, falla rápido y claro (en vez de colgarse)
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # el esquema lo maneja Flyway (src/main/resources/db/migration), no Hibernate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+mhesus:
+  jwt:
+    secret: ${MHESUS_JWT_SECRET:cambia-esta-clave-secreta-en-produccion-mhesus-2026-taller-motos-lineales}
+    expiracion-minutos: 480
+  cors:
+    origenes-permitidos: ${MHESUS_CORS_ORIGEN:http://localhost:4200}
