@@ -6,12 +6,18 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class MhesusApiApplication {
     public static void main(String[] args) {
-        // Fuerza IPv6 antes de que arranque cualquier conexión de red (incluida
-        // la de la base de datos) — necesario en redes "IPv6-only" donde el
-        // intento por IPv4 se cuelga y nunca llega a probar la IPv6 que sí
-        // funciona. Puesto acá además del pom.xml para que también aplique al
-        // correr la app directo desde el botón ▶ del IDE, no solo con Maven.
-        System.setProperty("java.net.preferIPv6Addresses", "true");
+        // Solo forzamos IPv6 si se activa explícitamente con la variable de
+        // entorno MHESUS_FORCE_IPV6=true. Esto NO va activado por defecto a
+        // propósito: es necesario en redes locales "IPv6-only" (como la del
+        // taller, donde el intento por IPv4 se cuelga y nunca llega a probar
+        // la IPv6 que sí funciona), pero en la nube (Railway, Render, etc.)
+        // suele ser justo al revés — esas redes son IPv4 estándar, y forzar
+        // IPv6 ahí rompe la conexión a la base de datos por completo. Si vas
+        // a correr esto en tu máquina local con el mismo problema de red,
+        // define esa variable de entorno solo ahí (ver README).
+        if ("true".equalsIgnoreCase(System.getenv("MHESUS_FORCE_IPV6"))) {
+            System.setProperty("java.net.preferIPv6Addresses", "true");
+        }
         SpringApplication.run(MhesusApiApplication.class, args);
     }
 }

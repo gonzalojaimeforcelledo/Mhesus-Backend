@@ -49,7 +49,6 @@ public class ProductoController {
         return filas.stream().map(productoService::upsertPorCodigo).toList();
     }
 
-    @PutMapping("/{id}")
     @PatchMapping("/{id}")
     public Producto actualizar(@PathVariable String id, @RequestBody ProductoRequest req) {
         return productoService.actualizar(id, req);

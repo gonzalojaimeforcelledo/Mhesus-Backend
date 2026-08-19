@@ -83,6 +83,20 @@ la prueba y conectó sin problema. Si en tu red SÍ tienes IPv4 funcionando
 normal, Supabase debería funcionarte igual de bien — el problema no era
 Supabase en sí, era esta combinación particular de red + proveedor.
 
+**⚠️ Sobre forzar IPv6 — NO lo actives en la nube.** Como consecuencia del
+punto anterior, `pom.xml` tiene un `-Djava.net.preferIPv6Addresses=true`
+metido en el plugin de `spring-boot:run`, pero **solo aplica cuando corres
+`mvn spring-boot:run` en tu máquina local** — no afecta el `Dockerfile` (que
+compila y corre el `.jar` directo, sin pasar por ese plugin). Esto es a
+propósito: los servidores de Railway/Render usan redes IPv4 estándar, así
+que forzar IPv6 ahí **rompe** la conexión a la base de datos (nos pasó — el
+deploy fallaba con "connection attempt failed" hasta que lo sacamos del
+`ENTRYPOINT` del Dockerfile). Si en el futuro corres esto en otra máquina
+local con el mismo problema de red que el taller (IPv6 sí, IPv4 no), y NO
+usas `mvn spring-boot:run` sino el botón ▶ de tu IDE directamente, define la
+variable de entorno `MHESUS_FORCE_IPV6=true` en la configuración de Run de
+tu IDE — el código en `MhesusApiApplication.java` la respeta.
+
 No necesitas crear ninguna tabla a mano ni correr SQL en ningún panel —
 **Flyway** gestiona el esquema automáticamente al arrancar la app, corriendo
 las migraciones versionadas en `src/main/resources/db/migration/`:

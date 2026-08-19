@@ -12,9 +12,9 @@ spring:
     # Transaction Pooler y Session Pooler) resuelve todos a direcciones IPv4
     # y por eso siempre daba timeout. Neon en cambio resolvió a una dirección
     # IPv6 en la prueba y conectó al toque, por eso lo usamos.
-    url: jdbc:postgresql://ep-broad-tree-axzli7t1-pooler.c-4.us-east-2.aws.neon.tech:5432/neondb?sslmode=require&channel_binding=require
-    username: neondb_owner
-    password: "npg_YkbnOj14pVix"
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-broad-tree-axzli7t1-pooler.c-4.us-east-2.aws.neon.tech:5432/neondb?sslmode=require&channel_binding=require}
+    username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
+    password: ${SPRING_DATASOURCE_PASSWORD:npg_YkbnOj14pVix}
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 10000  # 10s — si no conecta en ese tiempo, falla rápido y claro (en vez de colgarse)

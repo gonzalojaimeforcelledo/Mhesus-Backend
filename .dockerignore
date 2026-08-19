@@ -1,6 +1,6 @@
 target/
-data/
-*.class
 .idea/
 *.iml
+data/
 .env
+.git/
