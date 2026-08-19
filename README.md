@@ -205,7 +205,9 @@ La API queda disponible en `http://localhost:8080/api/v1`.
 
 ## Usuarios de demostración
 
-Igual que el frontend: `recepcion`, `mecanico`, `mecanico2`, `almacen`, `jefe`, `admin`,
+Igual que el frontend: `recepcion`, `mecanico` (cuenta única y compartida —
+todos los mecánicos del taller entran con este mismo usuario), `almacen`,
+`jefe`, `admin`,
 todos con contraseña `demo1234`.
 
 ## Endpoints principales

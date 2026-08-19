@@ -39,8 +39,12 @@ public class SeedDataRunner implements CommandLineRunner {
 
         String demo = passwordEncoder.encode("demo1234");
         usuarioRepository.save(new Usuario("u_recepcion", "Carla Ramos", "recepcion", demo, "recepcion", true));
-        usuarioRepository.save(new Usuario("u_mecanico1", "Jhon Quispe", "mecanico", demo, "mecanico", true));
-        usuarioRepository.save(new Usuario("u_mecanico2", "Luis Falcón", "mecanico2", demo, "mecanico", true));
+        // Cuenta de mecánico ÚNICA y compartida: todos los mecánicos del taller entran
+        // con este mismo usuario. Quién recibe cada OT se ve dentro del sistema (columna
+        // "Mecánico asignado"), no por tener una cuenta distinta cada uno. El administrador
+        // puede crear más perfiles de mecánico desde Administración → Usuarios si en algún
+        // momento necesita distinguir asignaciones por nombre individual.
+        usuarioRepository.save(new Usuario("u_mecanico1", "Mecánica MHESUS", "mecanico", demo, "mecanico", true));
         usuarioRepository.save(new Usuario("u_almacen", "Rosa Injante", "almacen", demo, "almacen", true));
         usuarioRepository.save(new Usuario("u_jefe", "Miguel Huamán", "jefe", demo, "jefe_taller", true));
         usuarioRepository.save(new Usuario("u_admin", "Administrador MHESUS", "admin", demo, "administracion", true));
