@@ -5,6 +5,7 @@ import com.mhesus.api.auth.domain.IntentoLoginRepository;
 import com.mhesus.api.auth.domain.Usuario;
 import com.mhesus.api.auth.domain.UsuarioRepository;
 import com.mhesus.api.auth.infrastructure.JwtUtil;
+import com.mhesus.api.soporte.application.SoporteService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +30,35 @@ public class AuthService {
     private final IntentoLoginRepository intentoLoginRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final SoporteService soporteService;
 
     public AuthService(UsuarioRepository usuarioRepository, IntentoLoginRepository intentoLoginRepository,
-                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil, SoporteService soporteService) {
         this.usuarioRepository = usuarioRepository;
         this.intentoLoginRepository = intentoLoginRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.soporteService = soporteService;
+    }
+
+    /**
+     * "No me acuerdo la contraseña" — no reseteamos nada nosotros mismos (no hay
+     * correo configurado), en vez de eso le avisamos a TODOS los administradores
+     * por notificación interna, para que sean ellos quienes restablezcan la
+     * contraseña desde Administración → Usuarios. No confirma si el usuario existe
+     * o no (para no filtrar esa información a quien no está autenticado).
+     */
+    @Transactional
+    public void solicitarRestablecimiento(String usuario) {
+        String clave = clave(usuario);
+        if (clave.isEmpty()) return;
+        Optional<Usuario> u = usuarioRepository.findByUsuario(usuario);
+        String nombreMostrado = u.map(x -> x.nombre + " (" + x.usuario + ")").orElse(usuario);
+        String mensaje = "Solicitud de restablecer contraseña: " + nombreMostrado;
+
+        usuarioRepository.findAll().stream()
+                .filter(x -> "administracion".equals(x.rol) && x.activo)
+                .forEach(admin -> soporteService.notificar(admin.id, mensaje, null));
     }
 
     public record ResultadoLogin(boolean ok, String token, Usuario usuario, String error, Long bloqueadoHastaMillis) {

@@ -47,4 +47,11 @@ public class UsuarioService {
         u.activo = !u.activo;
         return usuarioRepository.save(u);
     }
+
+    /** El administrador fija una contraseña nueva para un usuario (ej. tras "no me acuerdo la contraseña"). */
+    public Usuario restablecerPassword(String id, String nuevaPassword) {
+        Usuario u = usuarioRepository.findById(id).orElseThrow();
+        u.passwordHash = passwordEncoder.encode(nuevaPassword);
+        return usuarioRepository.save(u);
+    }
 }

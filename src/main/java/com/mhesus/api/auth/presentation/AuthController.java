@@ -34,4 +34,13 @@ public class AuthController {
         Long hasta = authService.estadoBloqueo(usuario);
         return java.util.Collections.singletonMap("bloqueadoHasta", hasta);
     }
+
+    /** "No me acuerdo la contraseña" — avisa a todos los administradores por notificación interna. */
+    @PostMapping("/solicitar-restablecimiento")
+    public ResponseEntity<Void> solicitarRestablecimiento(@RequestBody SolicitudRestablecimiento req) {
+        authService.solicitarRestablecimiento(req.usuario());
+        return ResponseEntity.ok().build();
+    }
+
+    public record SolicitudRestablecimiento(String usuario) {}
 }

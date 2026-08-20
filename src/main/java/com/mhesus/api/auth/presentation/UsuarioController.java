@@ -37,4 +37,12 @@ public class UsuarioController {
         Usuario u = usuarioService.alternarActivo(id);
         return UsuarioDto.de(u);
     }
+
+    @PatchMapping("/{id}/restablecer-password")
+    public UsuarioDto restablecerPassword(@PathVariable String id, @RequestBody RestablecerPasswordRequest req) {
+        Usuario u = usuarioService.restablecerPassword(id, req.nuevaPassword());
+        return UsuarioDto.de(u);
+    }
+
+    public record RestablecerPasswordRequest(String nuevaPassword) {}
 }
