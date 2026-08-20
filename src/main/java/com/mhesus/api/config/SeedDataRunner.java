@@ -46,8 +46,9 @@ public class SeedDataRunner implements CommandLineRunner {
         // momento necesita distinguir asignaciones por nombre individual.
         usuarioRepository.save(new Usuario("u_mecanico1", "Mecánica MHESUS", "mecanico", demo, "mecanico", true));
         usuarioRepository.save(new Usuario("u_almacen", "Rosa Injante", "almacen", demo, "almacen", true));
-        usuarioRepository.save(new Usuario("u_jefe", "Miguel Huamán", "jefe", demo, "jefe_taller", true));
         usuarioRepository.save(new Usuario("u_admin", "Administrador MHESUS", "admin", demo, "administracion", true));
+        // El rol "jefe_taller" ya no existe en el sistema — Control de calidad ahora
+        // lo cierra el mecánico solo al finalizar el servicio, sin aprobación extra.
 
         String hoy = Instant.now().toString();
         clienteRepository.save(new Cliente("c_1", "42839112", "Renato", "Salcedo Díaz", "956821034", "Jr. Lima 245, Chincha Alta", hoy));

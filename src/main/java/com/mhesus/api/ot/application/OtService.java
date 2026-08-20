@@ -111,17 +111,17 @@ public class OtService {
         return cambiarEstado(otId, siguiente, usuarioId, false);
     }
 
+    /**
+     * El mecánico marca el servicio como concluido: registra la hora de fin y
+     * avanza la OT directo a "Lista para entrega" — sin un rol de jefe de taller
+     * que apruebe "Control de calidad" en el medio, porque ese rol ya no existe.
+     */
     public ResultadoCambioEstado finalizarServicioYAvanzar(String otId, String usuarioId) {
         OrdenTrabajo ot = otRepository.findById(otId).orElseThrow();
         if (ot.trabajoFinalizadoEn == null) {
             ot.trabajoFinalizadoEn = Instant.now().toString();
             otRepository.save(ot);
         }
-        return avanzarEstado(otId, usuarioId);
-    }
-
-    /** Acción real del Jefe de Taller: aprueba el control de calidad y la OT pasa a "Lista para entrega". */
-    public ResultadoCambioEstado aprobarControlCalidad(String otId, String usuarioId) {
         return cambiarEstado(otId, "Lista para entrega", usuarioId, true);
     }
 

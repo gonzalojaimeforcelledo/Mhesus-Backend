@@ -69,13 +69,6 @@ public class OtController {
         return ResponseEntity.ok(res.ot());
     }
 
-    @PatchMapping("/{id}/aprobar-calidad")
-    public ResponseEntity<?> aprobarCalidad(@PathVariable String id, HttpServletRequest http) {
-        var res = otService.aprobarControlCalidad(id, usuarioId(http));
-        if (!res.ok()) return ResponseEntity.badRequest().body(new ErrorResponse(res.error()));
-        return ResponseEntity.ok(res.ot());
-    }
-
     @PostMapping("/{id}/diagnostico")
     public Diagnostico registrarDiagnostico(@PathVariable String id, @RequestBody DiagnosticoRequest req, HttpServletRequest http) {
         return otService.registrarDiagnostico(id, req, usuarioId(http));

@@ -20,7 +20,7 @@ public class Usuario {
     public String passwordHash;
 
     @Column(nullable = false)
-    public String rol; // recepcion | mecanico | almacen | jefe_taller | administracion
+    public String rol; // recepcion | mecanico | almacen | administracion
 
     @Column(nullable = false)
     public boolean activo = true;
