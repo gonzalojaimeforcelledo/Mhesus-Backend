@@ -61,6 +61,7 @@ public class OtService {
         ot.estado = "Creada";
         ot.nivelCombustible = req.nivelCombustible();
         ot.observacionCliente = req.observacionCliente();
+        ot.observacionAsesor = req.observacionAsesor();
         ot.servicioARealizar = req.servicioARealizar();
         ot.creadoEn = Instant.now().toString();
         ot.fotoIngreso = req.fotoIngreso();

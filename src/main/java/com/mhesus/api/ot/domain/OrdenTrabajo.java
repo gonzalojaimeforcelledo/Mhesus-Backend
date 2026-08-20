@@ -32,6 +32,9 @@ public class OrdenTrabajo {
     @Column(name = "observacion_cliente", length = 2000)
     public String observacionCliente;
 
+    @Column(name = "observacion_asesor", length = 2000)
+    public String observacionAsesor;
+
     @Column(name = "servicio_a_realizar", length = 2000)
     public String servicioARealizar;
 
