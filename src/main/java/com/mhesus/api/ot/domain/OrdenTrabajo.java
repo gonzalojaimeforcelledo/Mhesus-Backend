@@ -48,7 +48,16 @@ public class OrdenTrabajo {
     public String trabajoFinalizadoEn;
 
     @Column(name = "foto_ingreso", columnDefinition = "TEXT")
-    public String fotoIngreso;
+    public String fotoIngreso; // Frontal
+
+    @Column(name = "foto_ingreso_trasera", columnDefinition = "TEXT")
+    public String fotoIngresoTrasera;
+
+    @Column(name = "foto_ingreso_lateral_izq", columnDefinition = "TEXT")
+    public String fotoIngresoLateralIzq;
+
+    @Column(name = "foto_ingreso_lateral_der", columnDefinition = "TEXT")
+    public String fotoIngresoLateralDer;
 
     public OrdenTrabajo() {}
 }

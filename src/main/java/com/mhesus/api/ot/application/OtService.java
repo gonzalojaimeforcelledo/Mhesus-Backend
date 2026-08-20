@@ -65,6 +65,9 @@ public class OtService {
         ot.servicioARealizar = req.servicioARealizar();
         ot.creadoEn = Instant.now().toString();
         ot.fotoIngreso = req.fotoIngreso();
+        ot.fotoIngresoTrasera = req.fotoIngresoTrasera();
+        ot.fotoIngresoLateralIzq = req.fotoIngresoLateralIzq();
+        ot.fotoIngresoLateralDer = req.fotoIngresoLateralDer();
         ot = otRepository.save(ot);
         soporteService.registrarAuditoria(ot.id, asesorId, "Creación de OT", null, "Creada");
         if (req.kmActual() != null) {
