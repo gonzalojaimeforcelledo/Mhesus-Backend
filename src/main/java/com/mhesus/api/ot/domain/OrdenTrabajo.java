@@ -59,5 +59,11 @@ public class OrdenTrabajo {
     @Column(name = "foto_ingreso_lateral_der", columnDefinition = "TEXT")
     public String fotoIngresoLateralDer;
 
+    @Column(name = "foto_tablero", columnDefinition = "TEXT")
+    public String fotoTablero;
+
+    @Column(name = "tablero_no_enciende", nullable = false)
+    public boolean tableroNoEnciende;
+
     public OrdenTrabajo() {}
 }

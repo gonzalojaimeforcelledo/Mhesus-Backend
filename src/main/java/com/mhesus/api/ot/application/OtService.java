@@ -68,6 +68,8 @@ public class OtService {
         ot.fotoIngresoTrasera = req.fotoIngresoTrasera();
         ot.fotoIngresoLateralIzq = req.fotoIngresoLateralIzq();
         ot.fotoIngresoLateralDer = req.fotoIngresoLateralDer();
+        ot.fotoTablero = req.fotoTablero();
+        ot.tableroNoEnciende = Boolean.TRUE.equals(req.tableroNoEnciende());
         ot = otRepository.save(ot);
         soporteService.registrarAuditoria(ot.id, asesorId, "Creación de OT", null, "Creada");
         if (req.kmActual() != null) {
