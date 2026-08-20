@@ -120,6 +120,11 @@ public class OtService {
         return avanzarEstado(otId, usuarioId);
     }
 
+    /** Acción real del Jefe de Taller: aprueba el control de calidad y la OT pasa a "Lista para entrega". */
+    public ResultadoCambioEstado aprobarControlCalidad(String otId, String usuarioId) {
+        return cambiarEstado(otId, "Lista para entrega", usuarioId, true);
+    }
+
     public void marcarTrabajoIniciado(String otId) {
         OrdenTrabajo ot = otRepository.findById(otId).orElseThrow();
         if (ot.trabajoIniciadoEn == null) {
@@ -128,7 +133,25 @@ public class OtService {
         }
     }
 
-    public Diagnostico registrarDiagnostico(String otId, DiagnosticoRequest req) {
+    /**
+     * Avanza el estado de la OT al indicado, pero SOLO si eso es progresar
+     * (nunca retrocede lo que ya se avanzó) — usado por las demás acciones
+     * reales (diagnóstico, pedido, cotización, despacho...) para que la OT
+     * avance sola según lo que efectivamente va pasando, sin que nadie tenga
+     * que empujarla a mano con un botón genérico de "Avanzar".
+     */
+    public void avanzarSiCorresponde(String otId, String estadoObjetivo, String usuarioId, String motivo) {
+        OrdenTrabajo ot = otRepository.findById(otId).orElse(null);
+        if (ot == null) return;
+        if (!EstadoOtUtil.estaAntesDe(ot.estado, estadoObjetivo)) return;
+        String anterior = ot.estado;
+        ot.estado = estadoObjetivo;
+        otRepository.save(ot);
+        soporteService.registrarAuditoria(otId, usuarioId, motivo, anterior, estadoObjetivo);
+    }
+
+    public Diagnostico registrarDiagnostico(String otId, DiagnosticoRequest req, String usuarioId) {
+        boolean esNuevo = diagnosticoRepository.findByOtId(otId).isEmpty();
         Diagnostico d = diagnosticoRepository.findByOtId(otId).orElseGet(Diagnostico::new);
         d.id = d.id == null ? IdGenerator.generar("diag") : d.id;
         d.otId = otId;
@@ -137,7 +160,11 @@ public class OtService {
         d.mecanicoNombre = req.mecanicoNombre();
         d.creadoEn = Instant.now().toString();
         if (req.fotoDiagnostico() != null) d.fotoDiagnostico = req.fotoDiagnostico();
-        return diagnosticoRepository.save(d);
+        Diagnostico guardado = diagnosticoRepository.save(d);
+        if (esNuevo) {
+            avanzarSiCorresponde(otId, "En diagnóstico", usuarioId, "Diagnóstico registrado por el mecánico");
+        }
+        return guardado;
     }
 
     public Optional<Diagnostico> diagnosticoDe(String otId) {

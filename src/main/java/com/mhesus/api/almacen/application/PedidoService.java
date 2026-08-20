@@ -10,6 +10,7 @@ import com.mhesus.api.auth.domain.UsuarioRepository;
 import com.mhesus.api.cotizacion.application.CotizacionService;
 import com.mhesus.api.cotizacion.application.ItemCotizacionDto;
 import com.mhesus.api.cotizacion.domain.Cotizacion;
+import com.mhesus.api.ot.application.OtService;
 import com.mhesus.api.ot.domain.OrdenTrabajo;
 import com.mhesus.api.ot.domain.OrdenTrabajoRepository;
 import com.mhesus.api.soporte.application.SoporteService;
@@ -30,11 +31,12 @@ public class PedidoService {
     private final ProductoService productoService;
     private final CotizacionService cotizacionService;
     private final SoporteService soporteService;
+    private final OtService otService;
 
     public PedidoService(PedidoAlmacenRepository pedidoRepository, PedidoDetalleRepository detalleRepository,
                           ProductoRepository productoRepository, OrdenTrabajoRepository otRepository,
                           UsuarioRepository usuarioRepository, ProductoService productoService,
-                          CotizacionService cotizacionService, SoporteService soporteService) {
+                          CotizacionService cotizacionService, SoporteService soporteService, OtService otService) {
         this.pedidoRepository = pedidoRepository;
         this.detalleRepository = detalleRepository;
         this.productoRepository = productoRepository;
@@ -43,6 +45,7 @@ public class PedidoService {
         this.productoService = productoService;
         this.cotizacionService = cotizacionService;
         this.soporteService = soporteService;
+        this.otService = otService;
     }
 
     public List<PedidoAlmacen> deOt(String otId) {
@@ -75,6 +78,9 @@ public class PedidoService {
             d.cantidadDespachada = 0;
             detalleRepository.save(d);
         }
+        // Si la OT todavía no llegó a "Pedido de repuestos" (ej. se pidió antes de
+        // terminar el diagnóstico), avanza sola — nunca retrocede lo ya avanzado.
+        otService.avanzarSiCorresponde(otId, "Pedido de repuestos", creadoPor, "Pedido de repuestos generado");
         return pedido;
     }
 
@@ -111,12 +117,12 @@ public class PedidoService {
                 Producto p = productoRepository.findById(d.productoId).orElse(null);
                 items.add(new ItemCotizacionDto(p != null ? p.nombre : "Producto", d.cantidadSolicitada, p != null ? p.precio : 0));
             }
-            cotizacion = cotizacionService.generar(otId, items);
+            cotizacion = cotizacionService.generar(otId, items, usuarioId);
         } else {
             cotizacion = cotizacionExistente.get();
         }
         if (!cotizacion.autorizado) {
-            cotizacionService.autorizar(cotizacion.id);
+            cotizacionService.autorizar(cotizacion.id, usuarioId);
         }
         return aprobarParaAlmacen(pedidoId, usuarioId);
     }

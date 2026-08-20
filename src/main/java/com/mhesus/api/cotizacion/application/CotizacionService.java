@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mhesus.api.cotizacion.application.ItemCotizacionDto;
 import com.mhesus.api.cotizacion.domain.Cotizacion;
 import com.mhesus.api.cotizacion.domain.CotizacionRepository;
+import com.mhesus.api.ot.application.OtService;
 import com.mhesus.api.shared.util.IdGenerator;
 import org.springframework.stereotype.Service;
 
@@ -14,10 +15,12 @@ import java.util.Optional;
 @Service
 public class CotizacionService {
     private final CotizacionRepository cotizacionRepository;
+    private final OtService otService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public CotizacionService(CotizacionRepository cotizacionRepository) {
+    public CotizacionService(CotizacionRepository cotizacionRepository, OtService otService) {
         this.cotizacionRepository = cotizacionRepository;
+        this.otService = otService;
     }
 
     public Optional<Cotizacion> deOt(String otId) {
@@ -36,7 +39,7 @@ public class CotizacionService {
         }
     }
 
-    public Cotizacion generar(String otId, List<ItemCotizacionDto> detalle) {
+    public Cotizacion generar(String otId, List<ItemCotizacionDto> detalle, String usuarioId) {
         double total = detalle.stream().mapToDouble(i -> i.cantidad() * i.precioUnitario()).sum();
         Cotizacion c = cotizacionRepository.findByOtId(otId).orElseGet(Cotizacion::new);
         c.id = c.id == null ? IdGenerator.generar("cot") : c.id;
@@ -51,13 +54,17 @@ public class CotizacionService {
             c.autorizado = false;
             c.autorizadoEn = null;
         }
-        return cotizacionRepository.save(c);
+        Cotizacion guardada = cotizacionRepository.save(c);
+        otService.avanzarSiCorresponde(otId, "En espera de autorización", usuarioId, "Cotización generada, en espera de autorización del cliente");
+        return guardada;
     }
 
-    public Cotizacion autorizar(String id) {
+    public Cotizacion autorizar(String id, String usuarioId) {
         Cotizacion c = cotizacionRepository.findById(id).orElseThrow();
         c.autorizado = true;
         c.autorizadoEn = Instant.now().toString();
-        return cotizacionRepository.save(c);
+        Cotizacion guardada = cotizacionRepository.save(c);
+        otService.avanzarSiCorresponde(c.otId, "En ejecución", usuarioId, "Cliente autorizó la cotización");
+        return guardada;
     }
 }

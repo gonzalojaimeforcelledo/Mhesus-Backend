@@ -3,6 +3,7 @@ package com.mhesus.api.cotizacion.presentation;
 import com.mhesus.api.cotizacion.application.CotizacionRequest;
 import com.mhesus.api.cotizacion.domain.Cotizacion;
 import com.mhesus.api.cotizacion.application.CotizacionService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,11 @@ public class CotizacionController {
 
     public CotizacionController(CotizacionService cotizacionService) {
         this.cotizacionService = cotizacionService;
+    }
+
+    private String usuarioId(HttpServletRequest req) {
+        Object v = req.getAttribute("usuarioId");
+        return v == null ? null : v.toString();
     }
 
     @GetMapping("/api/v1/cotizaciones")
@@ -33,12 +39,12 @@ public class CotizacionController {
     }
 
     @PostMapping("/api/v1/ot/{otId}/cotizacion")
-    public Cotizacion generar(@PathVariable String otId, @RequestBody CotizacionRequest req) {
-        return cotizacionService.generar(otId, req.detalle());
+    public Cotizacion generar(@PathVariable String otId, @RequestBody CotizacionRequest req, HttpServletRequest http) {
+        return cotizacionService.generar(otId, req.detalle(), usuarioId(http));
     }
 
     @PatchMapping("/api/v1/cotizaciones/{id}/autorizar")
-    public Cotizacion autorizar(@PathVariable String id) {
-        return cotizacionService.autorizar(id);
+    public Cotizacion autorizar(@PathVariable String id, HttpServletRequest http) {
+        return cotizacionService.autorizar(id, usuarioId(http));
     }
 }

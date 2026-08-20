@@ -20,4 +20,12 @@ public final class EstadoOtUtil {
     public static boolean esTransicionValida(String actual, String siguiente) {
         return siguiente.equals(siguiente(actual));
     }
+
+    /** true si "objetivo" está más adelante en la secuencia que "actual" (o en un punto no reconocido). Sirve para no retroceder nunca al avanzar automáticamente. */
+    public static boolean estaAntesDe(String actual, String objetivo) {
+        int idxActual = SECUENCIA.indexOf(actual);
+        int idxObjetivo = SECUENCIA.indexOf(objetivo);
+        if (idxActual == -1 || idxObjetivo == -1) return false;
+        return idxActual < idxObjetivo;
+    }
 }
