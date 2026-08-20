@@ -21,11 +21,14 @@ public class ClienteController {
     }
 
     @GetMapping("/api/v1/clientes")
-    public ResponseEntity<?> listar(@RequestParam(required = false) String dni) {
+    public ResponseEntity<?> listar(@RequestParam(required = false) String dni, @RequestParam(required = false) String q) {
         if (dni != null && !dni.isBlank()) {
             return clienteService.buscarPorDni(dni)
                     .<ResponseEntity<?>>map(ResponseEntity::ok)
                     .orElseGet(() -> ResponseEntity.status(404).body(new ErrorResponse("Cliente no encontrado.")));
+        }
+        if (q != null && !q.isBlank()) {
+            return ResponseEntity.ok(clienteService.buscarClientesPorDniParcial(q));
         }
         return ResponseEntity.ok(clienteService.listar());
     }

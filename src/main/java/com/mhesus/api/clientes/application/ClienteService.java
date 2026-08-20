@@ -31,6 +31,10 @@ public class ClienteService {
         return clienteRepository.findByDni(dni);
     }
 
+    public List<Cliente> buscarClientesPorDniParcial(String query) {
+        return clienteRepository.findByDniStartingWith(query);
+    }
+
     public Cliente crear(ClienteRequest req) {
         Cliente c = new Cliente(
                 IdGenerator.generar("cli"), req.dni(), req.nombres(), req.apellidos(),
