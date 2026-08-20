@@ -3,6 +3,7 @@ package com.mhesus.api.clientes.presentation;
 import com.mhesus.api.clientes.application.ClienteRequest;
 import com.mhesus.api.shared.dto.ErrorResponse;
 import com.mhesus.api.clientes.application.MotoRequest;
+import com.mhesus.api.clientes.application.PlacaDuplicadaResponse;
 import com.mhesus.api.clientes.domain.Cliente;
 import com.mhesus.api.clientes.domain.Motocicleta;
 import com.mhesus.api.clientes.application.ClienteService;
@@ -40,8 +41,13 @@ public class ClienteController {
     }
 
     @PostMapping("/api/v1/clientes/{id}/motocicletas")
-    public Motocicleta agregarMoto(@PathVariable String id, @RequestBody MotoRequest req) {
+    public ResponseEntity<?> agregarMoto(@PathVariable String id, @RequestBody MotoRequest req) {
         MotoRequest conCliente = new MotoRequest(id, req.placa(), req.marca(), req.modelo(), req.anio(), req.kmActual());
-        return clienteService.agregarMoto(conCliente);
+        try {
+            Motocicleta m = clienteService.agregarMoto(conCliente);
+            return ResponseEntity.ok(m);
+        } catch (ClienteService.PlacaDuplicadaException e) {
+            return ResponseEntity.status(409).body(new PlacaDuplicadaResponse(e.getMessage(), e.motoExistente));
+        }
     }
 }

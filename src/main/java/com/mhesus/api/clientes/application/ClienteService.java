@@ -60,11 +60,26 @@ public class ClienteService {
     }
 
     public Motocicleta agregarMoto(MotoRequest req) {
+        // Segunda capa de validación (la primera ya la hace el frontend al escribir la
+        // placa) — evita duplicados aunque la petición venga directo de la API o dos
+        // personas registren la misma placa casi al mismo tiempo.
+        motocicletaRepository.findByPlacaIgnoreCase(req.placa()).ifPresent(existente -> {
+            throw new PlacaDuplicadaException(existente);
+        });
         Motocicleta m = new Motocicleta(
                 IdGenerator.generar("moto"), req.clienteId(), req.placa().toUpperCase(),
                 req.marca(), req.modelo(), req.anio(), req.kmActual() == null ? 0 : req.kmActual()
         );
         return motocicletaRepository.save(m);
+    }
+
+    /** Se lanza al intentar registrar una placa que ya existe — lleva la moto encontrada para que el controlador pueda devolverla junto con el error. */
+    public static class PlacaDuplicadaException extends RuntimeException {
+        public final Motocicleta motoExistente;
+        public PlacaDuplicadaException(Motocicleta motoExistente) {
+            super("Esta placa ya está registrada.");
+            this.motoExistente = motoExistente;
+        }
     }
 
     public Motocicleta actualizarKm(String motoId, int km) {
