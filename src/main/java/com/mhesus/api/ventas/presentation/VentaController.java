@@ -3,6 +3,7 @@ package com.mhesus.api.ventas.presentation;
 import com.mhesus.api.ventas.application.VentaRequest;
 import com.mhesus.api.ventas.application.VentaService;
 import com.mhesus.api.ventas.application.ResumenDiaResponse;
+import com.mhesus.api.ventas.application.ResumenIgvResponse;
 import com.mhesus.api.ventas.domain.Venta;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,15 @@ public class VentaController {
     public Map<String, Double> reporteMensual(@RequestParam(required = false) Integer anio) {
         int a = anio == null ? java.time.Year.now().getValue() : anio;
         return ventaService.ventasPorMes(a);
+    }
+
+    /** IGV a pagar del mes (ventas menos compras) — para el semáforo rojo/verde de Administración. */
+    @GetMapping("/igv-mensual")
+    public ResumenIgvResponse igvMensual(@RequestParam(required = false) Integer anio, @RequestParam(required = false) Integer mes) {
+        var hoy = java.time.LocalDate.now();
+        int a = anio == null ? hoy.getYear() : anio;
+        int m = mes == null ? hoy.getMonthValue() : mes;
+        return ventaService.resumenIgvMensual(a, m);
     }
 
     private Map<String, Object> aMapa(Venta v) {

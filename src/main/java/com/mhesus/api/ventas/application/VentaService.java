@@ -3,6 +3,7 @@ package com.mhesus.api.ventas.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mhesus.api.almacen.domain.Producto;
 import com.mhesus.api.almacen.domain.ProductoRepository;
+import com.mhesus.api.compras.application.CompraService;
 import com.mhesus.api.shared.util.IdGenerator;
 import com.mhesus.api.ventas.domain.Venta;
 import com.mhesus.api.ventas.domain.VentaRepository;
@@ -28,11 +29,13 @@ public class VentaService {
 
     private final VentaRepository ventaRepository;
     private final ProductoRepository productoRepository;
+    private final CompraService compraService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository) {
+    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository, CompraService compraService) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
+        this.compraService = compraService;
     }
 
     public List<Venta> listar() {
@@ -181,5 +184,31 @@ public class VentaService {
 
     private double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    /**
+     * Compara el IGV de ventas (débito fiscal) contra el IGV de compras
+     * (crédito fiscal) del mes: si las ventas superan a las compras, hay
+     * IGV por pagar (rojo); si no, no hay que pagar por ahora (verde).
+     * avisoDatosIncompletos indica si falta registrar ventas o compras ese
+     * mes — el cálculo podría no reflejar la realidad todavía.
+     */
+    public ResumenIgvResponse resumenIgvMensual(int anio, int mes) {
+        String desde = "%d-%02d-01".formatted(anio, mes);
+        LocalDate primerDiaSiguiente = LocalDate.of(anio, mes, 1).plusMonths(1);
+        String hasta = primerDiaSiguiente.toString();
+
+        List<Venta> delMes = ventaRepository.findAllByOrderByCreadoEnDesc().stream()
+                .filter(v -> !"ANULADA".equals(v.estado) && !"PROFORMA".equals(v.tipo))
+                .filter(v -> v.creadoEn.substring(0, 10).compareTo(desde) >= 0 && v.creadoEn.substring(0, 10).compareTo(hasta) < 0)
+                .toList();
+        double igvVentas = round2(delMes.stream().mapToDouble(v -> v.igv).sum());
+        double igvCompras = compraService.igvDelPeriodo(desde, hasta);
+        double igvAPagar = round2(Math.max(0, igvVentas - igvCompras));
+        boolean debePagar = igvAPagar > 0;
+        boolean sinVentas = delMes.isEmpty();
+        boolean sinCompras = igvCompras == 0;
+
+        return new ResumenIgvResponse(igvVentas, igvCompras, igvAPagar, debePagar, sinVentas, sinCompras);
     }
 }
