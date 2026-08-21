@@ -1,15 +1,19 @@
 package com.mhesus.api.auth.application;
 
+import com.mhesus.api.auth.domain.CodigoRecuperacion;
+import com.mhesus.api.auth.domain.CodigoRecuperacionRepository;
 import com.mhesus.api.auth.domain.IntentoLogin;
 import com.mhesus.api.auth.domain.IntentoLoginRepository;
 import com.mhesus.api.auth.domain.Usuario;
 import com.mhesus.api.auth.domain.UsuarioRepository;
 import com.mhesus.api.auth.infrastructure.JwtUtil;
+import com.mhesus.api.shared.util.IdGenerator;
 import com.mhesus.api.soporte.application.SoporteService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -25,20 +29,27 @@ import java.util.Optional;
 public class AuthService {
     private static final int MAX_INTENTOS = 3;
     private static final long BLOQUEO_MINUTOS = 5;
+    private static final long CODIGO_VENCE_MINUTOS = 15;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UsuarioRepository usuarioRepository;
     private final IntentoLoginRepository intentoLoginRepository;
+    private final CodigoRecuperacionRepository codigoRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final SoporteService soporteService;
+    private final EmailService emailService;
 
     public AuthService(UsuarioRepository usuarioRepository, IntentoLoginRepository intentoLoginRepository,
-                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil, SoporteService soporteService) {
+                        CodigoRecuperacionRepository codigoRepository, PasswordEncoder passwordEncoder,
+                        JwtUtil jwtUtil, SoporteService soporteService, EmailService emailService) {
         this.usuarioRepository = usuarioRepository;
         this.intentoLoginRepository = intentoLoginRepository;
+        this.codigoRepository = codigoRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.soporteService = soporteService;
+        this.emailService = emailService;
     }
 
     /**
@@ -59,6 +70,56 @@ public class AuthService {
         usuarioRepository.findAll().stream()
                 .filter(x -> "administracion".equals(x.rol) && x.activo)
                 .forEach(admin -> soporteService.notificar(admin.id, mensaje, null));
+    }
+
+    /**
+     * Recuperación por correo — solo para administradores (el resto usa
+     * "avisar a un administrador"). Si el usuario no existe, no es admin, o
+     * el correo no coincide con el que tiene registrado, no dice nada
+     * distinto — siempre responde igual, para no filtrar qué cuentas existen.
+     */
+    @Transactional
+    public void solicitarCodigoRecuperacion(String usuario, String email) {
+        String clave = clave(usuario);
+        if (clave.isEmpty() || email == null || email.isBlank()) return;
+        Optional<Usuario> u = usuarioRepository.findByUsuario(usuario)
+                .filter(x -> x.activo)
+                .filter(x -> "administracion".equals(x.rol))
+                .filter(x -> x.email != null && x.email.equalsIgnoreCase(email.trim()));
+        if (u.isEmpty()) return;
+
+        String codigo = String.format("%06d", RANDOM.nextInt(1_000_000));
+        CodigoRecuperacion c = new CodigoRecuperacion();
+        c.id = IdGenerator.generar("cod");
+        c.usuarioId = u.get().id;
+        c.codigo = codigo;
+        c.expiraEn = Instant.now().plus(CODIGO_VENCE_MINUTOS, ChronoUnit.MINUTES).toString();
+        c.usado = false;
+        c.creadoEn = Instant.now().toString();
+        codigoRepository.save(c);
+
+        emailService.enviarCodigoRecuperacion(u.get().email, u.get().nombre, codigo);
+    }
+
+    public record ResultadoCodigo(boolean ok, String error) {}
+
+    /** Confirma el código recibido por correo y, si es válido y no venció, actualiza la contraseña. */
+    @Transactional
+    public ResultadoCodigo confirmarCodigoRecuperacion(String usuario, String codigo, String nuevaPassword) {
+        Optional<Usuario> uOpt = usuarioRepository.findByUsuario(usuario);
+        if (uOpt.isEmpty()) return new ResultadoCodigo(false, "Código inválido.");
+        Usuario u = uOpt.get();
+
+        var c = codigoRepository.findTopByUsuarioIdAndCodigoAndUsadoFalseOrderByCreadoEnDesc(u.id, codigo).orElse(null);
+        if (c == null) return new ResultadoCodigo(false, "Código inválido.");
+        if (Instant.parse(c.expiraEn).isBefore(Instant.now())) return new ResultadoCodigo(false, "El código venció, solicita uno nuevo.");
+        if (nuevaPassword == null || nuevaPassword.trim().length() < 6) return new ResultadoCodigo(false, "La contraseña debe tener al menos 6 caracteres.");
+
+        c.usado = true;
+        codigoRepository.save(c);
+        u.passwordHash = passwordEncoder.encode(nuevaPassword.trim());
+        usuarioRepository.save(u);
+        return new ResultadoCodigo(true, null);
     }
 
     public record ResultadoLogin(boolean ok, String token, Usuario usuario, String error, Long bloqueadoHastaMillis) {

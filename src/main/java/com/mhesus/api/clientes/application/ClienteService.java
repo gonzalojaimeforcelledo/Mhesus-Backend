@@ -40,6 +40,14 @@ public class ClienteService {
                 IdGenerator.generar("cli"), req.dni(), req.nombres(), req.apellidos(),
                 req.celular(), req.direccion(), Instant.now().toString()
         );
+        c.email = req.email();
+        return clienteRepository.save(c);
+    }
+
+    /** Actualiza el correo de un cliente ya registrado (ej. si se pide en la OT y el cliente no lo tenía). */
+    public Cliente actualizarEmail(String clienteId, String email) {
+        Cliente c = clienteRepository.findById(clienteId).orElseThrow();
+        c.email = email;
         return clienteRepository.save(c);
     }
 

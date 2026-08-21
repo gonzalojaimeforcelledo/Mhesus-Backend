@@ -39,6 +39,14 @@ public class UsuarioService {
                 IdGenerator.generar("user"), req.nombre(), req.usuario(),
                 passwordEncoder.encode("demo1234"), req.rol(), true
         );
+        u.email = req.email();
+        return usuarioRepository.save(u);
+    }
+
+    /** Fija o cambia el correo de un usuario — necesario para que un administrador pueda recuperar su contraseña por email. */
+    public Usuario actualizarEmail(String id, String email) {
+        Usuario u = usuarioRepository.findById(id).orElseThrow();
+        u.email = email;
         return usuarioRepository.save(u);
     }
 

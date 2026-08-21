@@ -42,5 +42,22 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    /** Administrador: pide un código de 6 dígitos por correo (siempre responde igual, exista o no la cuenta). */
+    @PostMapping("/recuperar-admin/solicitar")
+    public ResponseEntity<Void> solicitarCodigoRecuperacion(@RequestBody SolicitudCodigo req) {
+        authService.solicitarCodigoRecuperacion(req.usuario(), req.email());
+        return ResponseEntity.ok().build();
+    }
+
+    /** Administrador: confirma el código recibido por correo y fija la nueva contraseña. */
+    @PostMapping("/recuperar-admin/confirmar")
+    public ResponseEntity<?> confirmarCodigoRecuperacion(@RequestBody ConfirmarCodigo req) {
+        var res = authService.confirmarCodigoRecuperacion(req.usuario(), req.codigo(), req.nuevaPassword());
+        if (!res.ok()) return ResponseEntity.status(400).body(Map.of("mensaje", res.error()));
+        return ResponseEntity.ok().build();
+    }
+
     public record SolicitudRestablecimiento(String usuario) {}
+    public record SolicitudCodigo(String usuario, String email) {}
+    public record ConfirmarCodigo(String usuario, String codigo, String nuevaPassword) {}
 }

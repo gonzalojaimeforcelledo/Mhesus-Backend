@@ -34,6 +34,24 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  # Envío de correos para "olvidé mi contraseña" (solo administradores).
+  # MHESUS_SMTP_USER/MHESUS_SMTP_PASSWORD: cuenta de Gmail + "contraseña de
+  # aplicación" (no la contraseña normal — se genera en
+  # myaccount.google.com/apppasswords, requiere verificación en 2 pasos
+  # activada). Si no se configuran, el envío de correo simplemente falla al
+  # intentar usarse (no rompe el resto del sistema).
+  mail:
+    host: ${MHESUS_SMTP_HOST:smtp.gmail.com}
+    port: ${MHESUS_SMTP_PORT:587}
+    username: ${MHESUS_SMTP_USER:}
+    password: ${MHESUS_SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 mhesus:
   jwt:
     secret: ${MHESUS_JWT_SECRET:cambia-esta-clave-secreta-en-produccion-mhesus-2026-taller-motos-lineales}

@@ -52,6 +52,12 @@ public class ProductoService {
     }
 
     private void aplicar(Producto p, ProductoRequest req) {
+        // Precio anterior: se guarda solo — si el producto ya existía y el precio
+        // cambió, la app puede mostrar "antes S/X, ahora S/Y" sin que nadie tenga
+        // que anotarlo a mano.
+        if (p.precio > 0 && req.precio() != p.precio) {
+            p.precioAnterior = p.precio;
+        }
         p.codigo = req.codigo();
         p.codigoBarras = req.codigoBarras();
         p.nombre = req.nombre();
@@ -60,6 +66,12 @@ public class ProductoService {
         p.stockActual = req.stockActual();
         p.stockMinimo = req.stockMinimo();
         p.lugar = req.lugar();
+        p.descuentoMaximo = req.descuentoMaximo();
+        p.marcaMoto = req.marcaMoto();
+        p.modeloMoto = req.modeloMoto();
+        p.submodeloMoto = req.submodeloMoto();
+        p.anioDesde = req.anioDesde();
+        p.anioHasta = req.anioHasta();
     }
 
     public void eliminar(String id) {

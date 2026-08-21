@@ -38,6 +38,13 @@ public class ClienteController {
         return clienteService.crear(req);
     }
 
+    @PatchMapping("/api/v1/clientes/{id}/email")
+    public Cliente actualizarEmail(@PathVariable String id, @RequestBody ActualizarEmailClienteRequest req) {
+        return clienteService.actualizarEmail(id, req.email());
+    }
+
+    public record ActualizarEmailClienteRequest(String email) {}
+
     @GetMapping("/api/v1/clientes/{id}/motocicletas")
     public List<Motocicleta> motosDeCliente(@PathVariable String id) {
         return clienteService.motosDeCliente(id);

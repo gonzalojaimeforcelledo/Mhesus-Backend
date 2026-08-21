@@ -20,6 +20,8 @@ public class Cliente {
     @Column(nullable = false)
     public String celular;
 
+    public String email;
+
     public String direccion;
 
     @Column(name = "creado_en", nullable = false)

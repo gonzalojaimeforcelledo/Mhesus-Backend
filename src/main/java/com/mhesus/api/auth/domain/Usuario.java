@@ -22,6 +22,9 @@ public class Usuario {
     @Column(nullable = false)
     public String rol; // recepcion | mecanico | almacen | administracion
 
+    @Column
+    public String email;
+
     @Column(nullable = false)
     public boolean activo = true;
 

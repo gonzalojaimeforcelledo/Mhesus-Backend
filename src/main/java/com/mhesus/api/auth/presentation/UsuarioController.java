@@ -44,5 +44,13 @@ public class UsuarioController {
         return UsuarioDto.de(u);
     }
 
+    /** Fija/cambia el correo de un usuario — necesario para que un administrador active la recuperación de contraseña por email. */
+    @PatchMapping("/{id}/email")
+    public UsuarioDto actualizarEmail(@PathVariable String id, @RequestBody ActualizarEmailRequest req) {
+        Usuario u = usuarioService.actualizarEmail(id, req.email());
+        return UsuarioDto.de(u);
+    }
+
     public record RestablecerPasswordRequest(String nuevaPassword) {}
+    public record ActualizarEmailRequest(String email) {}
 }
