@@ -1,10 +1,13 @@
 package com.mhesus.api.ventas.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mhesus.api.almacen.domain.Producto;
+import com.mhesus.api.almacen.domain.ProductoRepository;
 import com.mhesus.api.shared.util.IdGenerator;
 import com.mhesus.api.ventas.domain.Venta;
 import com.mhesus.api.ventas.domain.VentaRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -24,10 +27,12 @@ public class VentaService {
     private static final double TASA_IGV = 0.18;
 
     private final VentaRepository ventaRepository;
+    private final ProductoRepository productoRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public VentaService(VentaRepository ventaRepository) {
+    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository) {
         this.ventaRepository = ventaRepository;
+        this.productoRepository = productoRepository;
     }
 
     public List<Venta> listar() {
@@ -43,6 +48,7 @@ public class VentaService {
         return String.valueOf(cantidad + 1);
     }
 
+    @Transactional
     public Venta crear(VentaRequest req, String usuarioId) {
         // El precio de cada ítem ya incluye IGV (precio final de venta al público,
         // como se maneja en el catálogo de Almacén) — se extrae el IGV desde el total,
@@ -50,6 +56,26 @@ public class VentaService {
         double total = req.items().stream().mapToDouble(i -> i.cantidad() * i.precioUnitario()).sum();
         double subtotal = round2(total / (1 + TASA_IGV));
         double igv = round2(total - subtotal);
+
+        // Descuenta stock por cada ítem vinculado a un producto del catálogo (los
+        // ítems de texto libre, ej. "Mano de obra", no tienen productoId y no
+        // afectan el inventario). Se valida TODO primero, para no dejar la venta
+        // a medias si algún producto no alcanza.
+        for (ItemVentaDto item : req.items()) {
+            if (item.productoId() == null || item.productoId().isBlank()) continue;
+            Producto p = productoRepository.findById(item.productoId())
+                    .orElseThrow(() -> new StockInsuficienteException("Producto no encontrado en el catálogo."));
+            if (p.stockActual < item.cantidad()) {
+                throw new StockInsuficienteException(
+                        "Stock insuficiente de \"" + p.nombre + "\" (disponible: " + p.stockActual + ", pedido: " + item.cantidad() + ").");
+            }
+        }
+        for (ItemVentaDto item : req.items()) {
+            if (item.productoId() == null || item.productoId().isBlank()) continue;
+            Producto p = productoRepository.findById(item.productoId()).orElseThrow();
+            p.stockActual -= (int) Math.round(item.cantidad());
+            productoRepository.save(p);
+        }
 
         Venta v = new Venta();
         v.id = IdGenerator.generar("vta");
@@ -87,8 +113,22 @@ public class VentaService {
 
     public Venta anular(String id) {
         Venta v = ventaRepository.findById(id).orElseThrow();
+        if ("ANULADA".equals(v.estado)) return v; // ya estaba anulada, no repite la devolución de stock
         v.estado = "ANULADA";
+        // Devuelve al stock lo que esta venta había descontado.
+        for (ItemVentaDto item : leerDetalle(v)) {
+            if (item.productoId() == null || item.productoId().isBlank()) continue;
+            productoRepository.findById(item.productoId()).ifPresent(p -> {
+                p.stockActual += (int) Math.round(item.cantidad());
+                productoRepository.save(p);
+            });
+        }
         return ventaRepository.save(v);
+    }
+
+    /** Se lanza cuando un ítem de la venta no tiene stock suficiente en el catálogo de Almacén. */
+    public static class StockInsuficienteException extends RuntimeException {
+        public StockInsuficienteException(String mensaje) { super(mensaje); }
     }
 
     public List<ItemVentaDto> leerDetalle(Venta v) {

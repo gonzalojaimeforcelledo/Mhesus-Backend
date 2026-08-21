@@ -38,9 +38,13 @@ public class VentaController {
     }
 
     @PostMapping
-    public Map<String, Object> crear(@RequestBody VentaRequest req, HttpServletRequest http) {
-        Venta v = ventaService.crear(req, usuarioId(http));
-        return aMapa(v);
+    public ResponseEntity<?> crear(@RequestBody VentaRequest req, HttpServletRequest http) {
+        try {
+            Venta v = ventaService.crear(req, usuarioId(http));
+            return ResponseEntity.ok(aMapa(v));
+        } catch (VentaService.StockInsuficienteException e) {
+            return ResponseEntity.status(409).body(Map.of("mensaje", e.getMessage()));
+        }
     }
 
     @PatchMapping("/{id}/anular")
