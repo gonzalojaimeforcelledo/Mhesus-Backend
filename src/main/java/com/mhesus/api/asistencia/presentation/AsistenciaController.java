@@ -1,11 +1,13 @@
 package com.mhesus.api.asistencia.presentation;
 
 import com.mhesus.api.asistencia.application.AsistenciaService;
+import com.mhesus.api.asistencia.application.RegistroAsistenciaAdminDto;
 import com.mhesus.api.asistencia.domain.RegistroAsistencia;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -41,6 +43,19 @@ public class AsistenciaController {
     public ResponseEntity<RegistroAsistencia> miAsistenciaDeHoy(HttpServletRequest http) {
         RegistroAsistencia r = asistenciaService.miAsistenciaDeHoy(usuarioId(http));
         return r == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(r);
+    }
+
+    /**
+     * Listado de asistencia de todo el personal para el panel de
+     * Administración. Filtros opcionales por rango de fecha (YYYY-MM-DD);
+     * sin filtros, trae el mes calendario actual.
+     */
+    @GetMapping("/admin")
+    public ResponseEntity<List<RegistroAsistenciaAdminDto>> listarParaAdmin(
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta
+    ) {
+        return ResponseEntity.ok(asistenciaService.listarParaAdmin(desde, hasta));
     }
 
     @PostMapping("/llegada")

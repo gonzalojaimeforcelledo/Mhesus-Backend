@@ -84,6 +84,32 @@ public class AsistenciaService {
         return repo.findByUsuarioIdAndFecha(usuarioId, hoy()).orElse(null);
     }
 
+    /**
+     * Listado de asistencia de todos los usuarios para el panel de
+     * Administración, con nombre y rol ya resueltos. Si no se pasan fechas,
+     * trae el mes calendario actual (hora de Perú).
+     */
+    public List<RegistroAsistenciaAdminDto> listarParaAdmin(String desde, String hasta) {
+        String desdeFinal = (desde == null || desde.isBlank()) ? primerDiaDelMesActual() : desde;
+        String hastaFinal = (hasta == null || hasta.isBlank()) ? hoy() : hasta;
+
+        java.util.Map<String, Usuario> usuariosPorId = usuarioRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(u -> u.id, u -> u));
+
+        return repo.findByFechaBetweenOrderByFechaDescUsuarioIdAsc(desdeFinal, hastaFinal).stream()
+                .map(r -> {
+                    Usuario u = usuariosPorId.get(r.usuarioId);
+                    String nombre = u != null ? u.nombre : r.usuarioId;
+                    String rol = u != null ? u.rol : "—";
+                    return RegistroAsistenciaAdminDto.de(r, nombre, rol);
+                })
+                .toList();
+    }
+
+    private String primerDiaDelMesActual() {
+        return LocalDate.now(ZONA_PERU).withDayOfMonth(1).toString();
+    }
+
     public record Resultado(boolean ok, String error, RegistroAsistencia registro) {}
 
     private String horaActual() {
