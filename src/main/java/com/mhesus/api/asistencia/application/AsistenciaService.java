@@ -2,7 +2,12 @@ package com.mhesus.api.asistencia.application;
 
 import com.mhesus.api.asistencia.domain.RegistroAsistencia;
 import com.mhesus.api.asistencia.domain.RegistroAsistenciaRepository;
+import com.mhesus.api.auth.application.EmailService;
+import com.mhesus.api.auth.domain.Usuario;
+import com.mhesus.api.auth.domain.UsuarioRepository;
 import com.mhesus.api.shared.util.IdGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -20,16 +25,28 @@ import java.util.List;
  * ya que el navegador no puede leer el nombre de la red WiFi por seguridad.
  * Si la lista está vacía (no configurada todavía), se BLOQUEA todo por
  * seguridad en vez de dejar pasar cualquier IP.
+ *
+ * Cada marcado (llegada, almuerzo, salida) es independiente: se puede marcar
+ * en cualquier momento del día, sin exigir que los anteriores ya estén
+ * registrados (ej. se puede marcar "inicio de almuerzo" sin haber marcado
+ * "llegada" antes). Lo único que se sigue validando es no duplicar un mismo
+ * marcado el mismo día.
  */
 @Service
 public class AsistenciaService {
+    private static final Logger log = LoggerFactory.getLogger(AsistenciaService.class);
+
     @Value("${mhesus.ips-permitidas:}")
     private String ipsPermitidasCsv;
 
     private final RegistroAsistenciaRepository repo;
+    private final UsuarioRepository usuarioRepository;
+    private final EmailService emailService;
 
-    public AsistenciaService(RegistroAsistenciaRepository repo) {
+    public AsistenciaService(RegistroAsistenciaRepository repo, UsuarioRepository usuarioRepository, EmailService emailService) {
         this.repo = repo;
+        this.usuarioRepository = usuarioRepository;
+        this.emailService = emailService;
     }
 
     private List<String> ipsPermitidas() {
@@ -67,40 +84,77 @@ public class AsistenciaService {
         return LocalTime.now().withNano(0).toString();
     }
 
+    private String mensajeIpNoPermitida(String ip) {
+        // Se incluye la IP detectada en el mensaje para que, al configurar el
+        // sistema por primera vez desde el taller, sea fácil ver qué IP hay
+        // que agregar a MHESUS_IPS_PERMITIDAS sin tener que revisar logs.
+        String detectada = (ip == null || ip.isBlank()) ? "desconocida" : ip;
+        return "Para marcar debes estar conectado al WiFi de MHESUS o MHESUS 5G. (IP detectada: " + detectada + ")";
+    }
+
     public Resultado marcarLlegada(String usuarioId, String ip) {
         if (!ipPermitida(ip)) {
-            return new Resultado(false, "Para marcar tu llegada debes estar conectado al WiFi de MHESUS o MHESUS 5G.", null);
+            return new Resultado(false, mensajeIpNoPermitida(ip), null);
         }
         RegistroAsistencia r = registroDeHoy(usuarioId);
         if (r.horaLlegada != null) return new Resultado(false, "Ya marcaste tu llegada de hoy.", r);
         r.horaLlegada = horaActual();
-        return new Resultado(true, null, repo.save(r));
+        RegistroAsistencia guardado = repo.save(r);
+        notificarAdministracion(usuarioId, "Llegada", r.horaLlegada, r.fecha);
+        return new Resultado(true, null, guardado);
     }
 
     public Resultado marcarInicioAlmuerzo(String usuarioId) {
         RegistroAsistencia r = registroDeHoy(usuarioId);
-        if (r.horaLlegada == null) return new Resultado(false, "Primero marca tu llegada.", r);
         if (r.horaInicioAlmuerzo != null) return new Resultado(false, "Ya marcaste el inicio de tu almuerzo.", r);
         r.horaInicioAlmuerzo = horaActual();
-        return new Resultado(true, null, repo.save(r));
+        RegistroAsistencia guardado = repo.save(r);
+        notificarAdministracion(usuarioId, "Inicio de almuerzo", r.horaInicioAlmuerzo, r.fecha);
+        return new Resultado(true, null, guardado);
     }
 
     public Resultado marcarFinAlmuerzo(String usuarioId) {
         RegistroAsistencia r = registroDeHoy(usuarioId);
-        if (r.horaInicioAlmuerzo == null) return new Resultado(false, "Primero marca el inicio de tu almuerzo.", r);
         if (r.horaFinAlmuerzo != null) return new Resultado(false, "Ya marcaste el fin de tu almuerzo.", r);
         r.horaFinAlmuerzo = horaActual();
-        return new Resultado(true, null, repo.save(r));
+        RegistroAsistencia guardado = repo.save(r);
+        notificarAdministracion(usuarioId, "Fin de almuerzo", r.horaFinAlmuerzo, r.fecha);
+        return new Resultado(true, null, guardado);
     }
 
     public Resultado marcarSalida(String usuarioId, String ip) {
         if (!ipPermitida(ip)) {
-            return new Resultado(false, "Para marcar tu salida debes estar conectado al WiFi de MHESUS o MHESUS 5G.", null);
+            return new Resultado(false, mensajeIpNoPermitida(ip), null);
         }
         RegistroAsistencia r = registroDeHoy(usuarioId);
-        if (r.horaLlegada == null) return new Resultado(false, "Todavía no marcaste tu llegada de hoy.", r);
         if (r.horaSalida != null) return new Resultado(false, "Ya marcaste tu salida de hoy.", r);
         r.horaSalida = horaActual();
-        return new Resultado(true, null, repo.save(r));
+        RegistroAsistencia guardado = repo.save(r);
+        notificarAdministracion(usuarioId, "Salida", r.horaSalida, r.fecha);
+        return new Resultado(true, null, guardado);
+    }
+
+    /**
+     * Envía un correo a todos los usuarios con rol "administracion" que
+     * tengan email configurado, avisando qué marcado se hizo, a qué hora y
+     * qué fecha. No debe romper el marcado de asistencia si el envío falla
+     * (ej. SMTP no configurado todavía) — por eso se atrapa cualquier error.
+     */
+    private void notificarAdministracion(String usuarioId, String tipoMarcado, String hora, String fecha) {
+        try {
+            Usuario quienMarco = usuarioRepository.findById(usuarioId).orElse(null);
+            String nombre = quienMarco != null ? quienMarco.nombre : usuarioId;
+            List<String> destinatarios = usuarioRepository.findAll().stream()
+                    .filter(u -> "administracion".equalsIgnoreCase(u.rol))
+                    .map(u -> u.email)
+                    .filter(e -> e != null && !e.isBlank())
+                    .toList();
+            if (destinatarios.isEmpty()) return;
+            for (String destino : destinatarios) {
+                emailService.enviarReporteAsistencia(destino, nombre, tipoMarcado, fecha, hora);
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo enviar el correo de reporte de asistencia: {}", e.getMessage());
+        }
     }
 }

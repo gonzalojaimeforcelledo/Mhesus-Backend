@@ -32,4 +32,20 @@ public class EmailService {
         );
         mailSender.send(mensaje);
     }
+
+    public void enviarReporteAsistencia(String destinatario, String nombreUsuario, String tipoMarcado, String fecha, String hora) {
+        SimpleMailMessage mensaje = new SimpleMailMessage();
+        if (remitente != null && !remitente.isBlank()) {
+            mensaje.setFrom(remitente);
+        }
+        mensaje.setTo(destinatario);
+        mensaje.setSubject("MHESUS — Asistencia: " + nombreUsuario + " marcó " + tipoMarcado);
+        mensaje.setText(
+                nombreUsuario + " marcó \"" + tipoMarcado + "\".\n\n" +
+                "Fecha: " + fecha + "\n" +
+                "Hora: " + hora + "\n\n" +
+                "— Sistema interno MHESUS"
+        );
+        mailSender.send(mensaje);
+    }
 }
