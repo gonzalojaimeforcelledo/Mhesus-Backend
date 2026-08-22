@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 
@@ -59,8 +60,13 @@ public class AsistenciaService {
         return !permitidas.isEmpty() && ip != null && permitidas.contains(ip);
     }
 
+    // El servidor (Railway) corre en UTC, pero el taller está en Perú
+    // (UTC-5, sin horario de verano). Sin esto, la hora y hasta la fecha
+    // registradas quedarían desfasadas respecto a la hora real del taller.
+    private static final ZoneId ZONA_PERU = ZoneId.of("America/Lima");
+
     private String hoy() {
-        return LocalDate.now().toString();
+        return LocalDate.now(ZONA_PERU).toString();
     }
 
     private RegistroAsistencia registroDeHoy(String usuarioId) {
@@ -81,7 +87,7 @@ public class AsistenciaService {
     public record Resultado(boolean ok, String error, RegistroAsistencia registro) {}
 
     private String horaActual() {
-        return LocalTime.now().withNano(0).toString();
+        return LocalTime.now(ZONA_PERU).withNano(0).toString();
     }
 
     private String mensajeIpNoPermitida(String ip) {
