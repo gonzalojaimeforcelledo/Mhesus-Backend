@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mhesus.api.almacen.domain.Producto;
 import com.mhesus.api.almacen.domain.ProductoRepository;
 import com.mhesus.api.compras.application.CompraService;
+import com.mhesus.api.ofertas.application.ItemOfertaDto;
+import com.mhesus.api.ofertas.application.OfertaService;
+import com.mhesus.api.ofertas.domain.Oferta;
+import com.mhesus.api.ofertas.domain.OfertaRepository;
 import com.mhesus.api.shared.util.IdGenerator;
 import com.mhesus.api.ventas.domain.Venta;
 import com.mhesus.api.ventas.domain.VentaRepository;
@@ -30,12 +34,17 @@ public class VentaService {
     private final VentaRepository ventaRepository;
     private final ProductoRepository productoRepository;
     private final CompraService compraService;
+    private final OfertaRepository ofertaRepository;
+    private final OfertaService ofertaService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository, CompraService compraService) {
+    public VentaService(VentaRepository ventaRepository, ProductoRepository productoRepository, CompraService compraService,
+                         OfertaRepository ofertaRepository, OfertaService ofertaService) {
         this.ventaRepository = ventaRepository;
         this.productoRepository = productoRepository;
         this.compraService = compraService;
+        this.ofertaRepository = ofertaRepository;
+        this.ofertaService = ofertaService;
     }
 
     public List<Venta> listar() {
@@ -70,25 +79,37 @@ public class VentaService {
         double subtotal = round2(total / (1 + TASA_IGV));
         double igv = round2(total - subtotal);
 
-        // Descuenta stock por cada ítem vinculado a un producto del catálogo (los
-        // ítems de texto libre, ej. "Mano de obra", no tienen productoId y no
-        // afectan el inventario). Se valida TODO primero, para no dejar la venta
-        // a medias si algún producto no alcanza. La proforma NO descuenta — es
-        // solo una cotización, los productos todavía no salieron del taller.
+        // Descuenta stock por cada ítem vinculado a un producto del catálogo, o —
+        // si es una oferta (combo) — por cada producto que la compone, multiplicado
+        // por cuántos combos se están vendiendo. Los ítems de texto libre (ej. "Mano
+        // de obra") no tienen productoId ni ofertaId y no afectan el inventario. Se
+        // valida TODO primero, para no dejar la venta a medias si algo no alcanza.
+        // La proforma NO descuenta — es solo una cotización, nada salió todavía.
         if (afectaStock(req.tipo())) {
+            Map<String, Integer> necesarioPorProducto = new LinkedHashMap<>();
             for (ItemVentaDto item : req.items()) {
-                if (item.productoId() == null || item.productoId().isBlank()) continue;
-                Producto p = productoRepository.findById(item.productoId())
-                        .orElseThrow(() -> new StockInsuficienteException("Producto no encontrado en el catálogo."));
-                if (p.stockActual < item.cantidad()) {
-                    throw new StockInsuficienteException(
-                            "Stock insuficiente de \"" + p.nombre + "\" (disponible: " + p.stockActual + ", pedido: " + item.cantidad() + ").");
+                if (item.ofertaId() != null && !item.ofertaId().isBlank()) {
+                    Oferta oferta = ofertaRepository.findById(item.ofertaId())
+                            .orElseThrow(() -> new StockInsuficienteException("Oferta no encontrada."));
+                    for (ItemOfertaDto componente : ofertaService.leerItems(oferta)) {
+                        int cantidadNecesaria = (int) Math.round(componente.cantidad() * item.cantidad());
+                        necesarioPorProducto.merge(componente.productoId(), cantidadNecesaria, Integer::sum);
+                    }
+                } else if (item.productoId() != null && !item.productoId().isBlank()) {
+                    necesarioPorProducto.merge(item.productoId(), (int) Math.round(item.cantidad()), Integer::sum);
                 }
             }
-            for (ItemVentaDto item : req.items()) {
-                if (item.productoId() == null || item.productoId().isBlank()) continue;
-                Producto p = productoRepository.findById(item.productoId()).orElseThrow();
-                p.stockActual -= (int) Math.round(item.cantidad());
+            for (var entrada : necesarioPorProducto.entrySet()) {
+                Producto p = productoRepository.findById(entrada.getKey())
+                        .orElseThrow(() -> new StockInsuficienteException("Producto no encontrado en el catálogo."));
+                if (p.stockActual < entrada.getValue()) {
+                    throw new StockInsuficienteException(
+                            "Stock insuficiente de \"" + p.nombre + "\" (disponible: " + p.stockActual + ", requerido: " + entrada.getValue() + ").");
+                }
+            }
+            for (var entrada : necesarioPorProducto.entrySet()) {
+                Producto p = productoRepository.findById(entrada.getKey()).orElseThrow();
+                p.stockActual -= entrada.getValue();
                 productoRepository.save(p);
             }
         }
@@ -133,12 +154,25 @@ public class VentaService {
         Venta v = ventaRepository.findById(id).orElseThrow();
         if ("ANULADA".equals(v.estado)) return v; // ya estaba anulada, no repite la devolución de stock
         v.estado = "ANULADA";
-        // Devuelve al stock lo que esta venta había descontado (si es que descontó algo).
+        // Devuelve al stock lo que esta venta había descontado (si es que descontó algo) —
+        // incluye deshacer las ofertas, devolviendo cada producto que las componía.
         if (afectaStock(v.tipo)) {
+            Map<String, Integer> aDevolver = new LinkedHashMap<>();
             for (ItemVentaDto item : leerDetalle(v)) {
-                if (item.productoId() == null || item.productoId().isBlank()) continue;
-                productoRepository.findById(item.productoId()).ifPresent(p -> {
-                    p.stockActual += (int) Math.round(item.cantidad());
+                if (item.ofertaId() != null && !item.ofertaId().isBlank()) {
+                    ofertaRepository.findById(item.ofertaId()).ifPresent(oferta -> {
+                        for (ItemOfertaDto componente : ofertaService.leerItems(oferta)) {
+                            int cantidad = (int) Math.round(componente.cantidad() * item.cantidad());
+                            aDevolver.merge(componente.productoId(), cantidad, Integer::sum);
+                        }
+                    });
+                } else if (item.productoId() != null && !item.productoId().isBlank()) {
+                    aDevolver.merge(item.productoId(), (int) Math.round(item.cantidad()), Integer::sum);
+                }
+            }
+            for (var entrada : aDevolver.entrySet()) {
+                productoRepository.findById(entrada.getKey()).ifPresent(p -> {
+                    p.stockActual += entrada.getValue();
                     productoRepository.save(p);
                 });
             }

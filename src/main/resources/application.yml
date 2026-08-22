@@ -58,3 +58,9 @@ mhesus:
     expiracion-minutos: 480
   cors:
     origenes-permitidos: ${MHESUS_CORS_ORIGEN:http://localhost:4200}
+  # IPs públicas del router del taller (WiFi "MHESUS" y "MHESUS 5G" salen por el
+  # mismo router, así que comparten la misma IP pública). Separadas por coma si
+  # hay más de una (ej. dos proveedores de internet). Se usa para permitir el
+  # marcado de llegada/salida solo estando en el taller. Vacío = bloquea todo
+  # marcado de llegada/salida hasta que se configure.
+  ips-permitidas: ${MHESUS_IPS_PERMITIDAS:}
