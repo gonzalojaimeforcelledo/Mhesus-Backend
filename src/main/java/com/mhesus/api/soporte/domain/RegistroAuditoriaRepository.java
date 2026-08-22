@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface RegistroAuditoriaRepository extends JpaRepository<RegistroAuditoria, String> {
     List<RegistroAuditoria> findAllByOrderByCreadoEnDesc();
+    long deleteByCreadoEnLessThan(String creadoEn);
 }

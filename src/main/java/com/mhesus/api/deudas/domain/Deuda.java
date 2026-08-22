@@ -37,6 +37,25 @@ public class Deuda {
     @Column(name = "fecha_vencimiento")
     public String fechaVencimiento; // YYYY-MM-DD, opcional
 
+    /** Solo aplica a POR_COBRAR — datos de contacto y garantía dejada, opcionales. */
+    @Column(length = 20)
+    public String celular;
+
+    @Column(length = 300)
+    public String direccion;
+
+    /** Qué dejó como garantía (ej. "DNI", "tarjeta de propiedad"), opcional. */
+    @Column(length = 300)
+    public String garantia;
+
+    /** Fecha en que se otorgó/solicitó la deuda (puede diferir de creadoEn si se registra en retrospectiva). */
+    @Column(name = "fecha_inicio")
+    public String fechaInicio; // YYYY-MM-DD
+
+    /** Último mes (YYYY-MM) en que se envió el recordatorio automático — evita notificar más de una vez por mes. */
+    @Column(name = "ultima_notificacion_mes", length = 7)
+    public String ultimaNotificacionMes;
+
     /** PENDIENTE | PAGADA */
     @Column(nullable = false, length = 20)
     public String estado;

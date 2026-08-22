@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface DeudaRepository extends JpaRepository<Deuda, String> {
     List<Deuda> findByTipoOrderByCreadoEnDesc(String tipo);
+    List<Deuda> findByEstado(String estado);
 }

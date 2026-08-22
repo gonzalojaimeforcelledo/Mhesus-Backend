@@ -48,4 +48,20 @@ public class EmailService {
         );
         mailSender.send(mensaje);
     }
+
+    public void enviarRecordatorioDeuda(String destinatario, String nombreDeudor, double montoPendiente, String fechaInicio, String fechaVencimiento) {
+        SimpleMailMessage mensaje = new SimpleMailMessage();
+        if (remitente != null && !remitente.isBlank()) {
+            mensaje.setFrom(remitente);
+        }
+        mensaje.setTo(destinatario);
+        mensaje.setSubject("MHESUS — Recordatorio de deuda: " + nombreDeudor);
+        mensaje.setText(
+                nombreDeudor + " todavía debe S/ " + String.format("%.2f", montoPendiente) + ".\n\n" +
+                "Deuda desde: " + (fechaInicio != null ? fechaInicio : "—") + "\n" +
+                "Vence: " + (fechaVencimiento != null ? fechaVencimiento : "sin fecha límite") + "\n\n" +
+                "— Sistema interno MHESUS"
+        );
+        mailSender.send(mensaje);
+    }
 }

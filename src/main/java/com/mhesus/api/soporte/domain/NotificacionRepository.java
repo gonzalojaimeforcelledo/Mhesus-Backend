@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface NotificacionRepository extends JpaRepository<Notificacion, String> {
     List<Notificacion> findByUsuarioIdOrderByCreadoEnDesc(String usuarioId);
+    long deleteByCreadoEnLessThan(String creadoEn);
 }

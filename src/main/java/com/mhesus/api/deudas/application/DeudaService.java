@@ -6,10 +6,14 @@ import com.mhesus.api.shared.util.IdGenerator;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
 public class DeudaService {
+    private static final ZoneId ZONA_PERU = ZoneId.of("America/Lima");
+
     private final DeudaRepository deudaRepository;
 
     public DeudaService(DeudaRepository deudaRepository) {
@@ -34,6 +38,12 @@ public class DeudaService {
         d.montoOriginal = req.montoOriginal();
         d.montoPendiente = req.montoOriginal();
         d.fechaVencimiento = req.fechaVencimiento();
+        d.celular = req.celular();
+        d.direccion = req.direccion();
+        d.garantia = req.garantia();
+        d.fechaInicio = (req.fechaInicio() == null || req.fechaInicio().isBlank())
+                ? LocalDate.now(ZONA_PERU).toString()
+                : req.fechaInicio();
         d.estado = "PENDIENTE";
         d.creadoPor = usuarioId;
         d.creadoEn = Instant.now().toString();

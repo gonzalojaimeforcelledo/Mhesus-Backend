@@ -11,4 +11,6 @@ public interface RegistroAsistenciaRepository extends JpaRepository<RegistroAsis
     // fecha es texto en formato YYYY-MM-DD, así que el orden alfabético
     // coincide con el orden cronológico — no hace falta parsear a LocalDate.
     List<RegistroAsistencia> findByFechaBetweenOrderByFechaDescUsuarioIdAsc(String desde, String hasta);
+
+    long deleteByFechaLessThan(String fecha);
 }

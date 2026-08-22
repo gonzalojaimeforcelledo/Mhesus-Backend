@@ -61,4 +61,14 @@ public class SoporteController {
     public void marcarTodasLeidas(HttpServletRequest http) {
         soporteService.marcarTodasLeidas(usuarioId(http));
     }
+
+    /**
+     * Borra asistencia, notificaciones y auditoría más antiguas que el corte
+     * elegido (6 o 12 meses). No toca clientes, OT, ventas ni cotizaciones.
+     */
+    @DeleteMapping("/sistema/limpieza")
+    public SoporteService.LimpiezaResultado limpiarRegistrosAntiguos(@RequestParam int meses) {
+        int mesesValido = (meses == 12) ? 12 : 6; // cualquier valor que no sea 12 se trata como el corte más conservador (6 meses)
+        return soporteService.limpiarRegistrosAntiguos(mesesValido);
+    }
 }
