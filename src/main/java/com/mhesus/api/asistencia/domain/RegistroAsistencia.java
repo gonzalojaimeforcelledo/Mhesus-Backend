@@ -4,9 +4,9 @@ import jakarta.persistence.*;
 
 /**
  * Marcado de asistencia diario de un usuario (Almacén, Recepción, Mecánico).
- * Llegada y salida solo se pueden registrar conectado a la red WiFi del
- * taller (se valida por IP pública del router — ver AsistenciaService); el
- * almuerzo no tiene esa restricción, ya que puede tomarse fuera del taller.
+ * Los cuatro marcados (llegada, inicio/fin de almuerzo, salida) solo se
+ * pueden registrar conectado a la red WiFi del taller (se valida por IP
+ * pública del router — ver AsistenciaService).
  */
 @Entity
 @Table(name = "registros_asistencia")

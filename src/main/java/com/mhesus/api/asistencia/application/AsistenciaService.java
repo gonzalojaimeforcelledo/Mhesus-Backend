@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Marcado de llegada/almuerzo/salida. Llegada y salida exigen que la IP
+ * Marcado de llegada/almuerzo/salida. Los cuatro marcados exigen que la IP
  * pública del que hace la petición esté en la lista de IPs permitidas del
  * WiFi del taller (MHESUS_IPS_PERMITIDAS, separadas por coma) — es la única
  * forma real de verificar "conectado al WiFi del taller" desde un sitio web,
@@ -27,11 +27,11 @@ import java.util.List;
  * Si la lista está vacía (no configurada todavía), se BLOQUEA todo por
  * seguridad en vez de dejar pasar cualquier IP.
  *
- * Cada marcado (llegada, almuerzo, salida) es independiente: se puede marcar
- * en cualquier momento del día, sin exigir que los anteriores ya estén
- * registrados (ej. se puede marcar "inicio de almuerzo" sin haber marcado
- * "llegada" antes). Lo único que se sigue validando es no duplicar un mismo
- * marcado el mismo día.
+ * Cada marcado (llegada, almuerzo, salida) es independiente en cuanto a
+ * orden: se puede marcar en cualquier momento del día, sin exigir que los
+ * anteriores ya estén registrados (ej. se puede marcar "inicio de almuerzo"
+ * sin haber marcado "llegada" antes). Lo único que se sigue validando,
+ * además de la IP, es no duplicar un mismo marcado el mismo día.
  */
 @Service
 public class AsistenciaService {
@@ -136,7 +136,10 @@ public class AsistenciaService {
         return new Resultado(true, null, guardado);
     }
 
-    public Resultado marcarInicioAlmuerzo(String usuarioId) {
+    public Resultado marcarInicioAlmuerzo(String usuarioId, String ip) {
+        if (!ipPermitida(ip)) {
+            return new Resultado(false, mensajeIpNoPermitida(ip), null);
+        }
         RegistroAsistencia r = registroDeHoy(usuarioId);
         if (r.horaInicioAlmuerzo != null) return new Resultado(false, "Ya marcaste el inicio de tu almuerzo.", r);
         r.horaInicioAlmuerzo = horaActual();
@@ -145,7 +148,10 @@ public class AsistenciaService {
         return new Resultado(true, null, guardado);
     }
 
-    public Resultado marcarFinAlmuerzo(String usuarioId) {
+    public Resultado marcarFinAlmuerzo(String usuarioId, String ip) {
+        if (!ipPermitida(ip)) {
+            return new Resultado(false, mensajeIpNoPermitida(ip), null);
+        }
         RegistroAsistencia r = registroDeHoy(usuarioId);
         if (r.horaFinAlmuerzo != null) return new Resultado(false, "Ya marcaste el fin de tu almuerzo.", r);
         r.horaFinAlmuerzo = horaActual();

@@ -67,15 +67,15 @@ public class AsistenciaController {
 
     @PostMapping("/almuerzo/inicio")
     public ResponseEntity<?> marcarInicioAlmuerzo(HttpServletRequest http) {
-        var res = asistenciaService.marcarInicioAlmuerzo(usuarioId(http));
-        if (!res.ok()) return ResponseEntity.status(400).body(Map.of("mensaje", res.error()));
+        var res = asistenciaService.marcarInicioAlmuerzo(usuarioId(http), ipCliente(http));
+        if (!res.ok()) return ResponseEntity.status(403).body(Map.of("mensaje", res.error()));
         return ResponseEntity.ok(res.registro());
     }
 
     @PostMapping("/almuerzo/fin")
     public ResponseEntity<?> marcarFinAlmuerzo(HttpServletRequest http) {
-        var res = asistenciaService.marcarFinAlmuerzo(usuarioId(http));
-        if (!res.ok()) return ResponseEntity.status(400).body(Map.of("mensaje", res.error()));
+        var res = asistenciaService.marcarFinAlmuerzo(usuarioId(http), ipCliente(http));
+        if (!res.ok()) return ResponseEntity.status(403).body(Map.of("mensaje", res.error()));
         return ResponseEntity.ok(res.registro());
     }
 
