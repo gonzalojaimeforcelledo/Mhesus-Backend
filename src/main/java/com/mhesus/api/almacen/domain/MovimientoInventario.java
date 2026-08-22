@@ -23,6 +23,10 @@ public class MovimientoInventario {
     @Column(name = "usuario_id")
     public String usuarioId;
 
+    /** Motivo/descripción libre — ej. "Pedido ingresado", "Corrección de inventario", al subir un Excel de ingreso de stock. */
+    @Column(length = 300)
+    public String nota;
+
     @Column(name = "creado_en", nullable = false)
     public String creadoEn;
 

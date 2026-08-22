@@ -49,6 +49,12 @@ public class ProductoController {
         return filas.stream().map(productoService::upsertPorCodigo).toList();
     }
 
+    /** Ingreso de stock por lote (Excel): suma cantidad al stock existente, no lo reemplaza. Cada fila queda como movimiento con su nota. */
+    @PostMapping("/ingreso-stock")
+    public List<ProductoService.ResultadoIngresoItem> ingresoStock(@RequestBody List<ProductoService.IngresoStockItem> items, HttpServletRequest http) {
+        return productoService.ingresoStockPorLote(items, usuarioId(http));
+    }
+
     @PatchMapping("/{id}")
     public Producto actualizar(@PathVariable String id, @RequestBody ProductoRequest req) {
         return productoService.actualizar(id, req);

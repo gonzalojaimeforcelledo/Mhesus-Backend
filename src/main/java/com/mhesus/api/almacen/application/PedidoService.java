@@ -148,7 +148,7 @@ public class PedidoService {
             productoRepository.save(p);
             d.cantidadDespachada = d.cantidadSolicitada;
             detalleRepository.save(d);
-            productoService.registrarMovimiento(p.id, "salida", faltante, pedido.otId, usuarioId);
+            productoService.registrarMovimiento(p.id, "salida", faltante, pedido.otId, usuarioId, null);
         }
         pedido.estado = "Despachado";
         if (fotoDespacho != null) pedido.fotoDespacho = fotoDespacho;

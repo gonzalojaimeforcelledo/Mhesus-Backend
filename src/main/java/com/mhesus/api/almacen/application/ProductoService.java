@@ -82,11 +82,11 @@ public class ProductoService {
         Producto p = productoRepository.findById(id).orElseThrow();
         p.stockActual += delta;
         p = productoRepository.save(p);
-        registrarMovimiento(id, "ajuste", delta, null, usuarioId);
+        registrarMovimiento(id, "ajuste", delta, null, usuarioId, null);
         return p;
     }
 
-    public void registrarMovimiento(String productoId, String tipo, int cantidad, String otId, String usuarioId) {
+    public void registrarMovimiento(String productoId, String tipo, int cantidad, String otId, String usuarioId, String nota) {
         MovimientoInventario m = new MovimientoInventario();
         m.id = IdGenerator.generar("mov");
         m.productoId = productoId;
@@ -94,6 +94,7 @@ public class ProductoService {
         m.cantidad = cantidad;
         m.otId = otId;
         m.usuarioId = usuarioId;
+        m.nota = nota;
         m.creadoEn = Instant.now().toString();
         movimientoRepository.save(m);
     }
@@ -113,5 +114,28 @@ public class ProductoService {
             return new ResultadoUpsert(productoRepository.save(p), false);
         }
         return new ResultadoUpsert(crear(req), true);
+    }
+
+    public record IngresoStockItem(String codigo, int cantidad, String nota) {}
+    public record ResultadoIngresoItem(String codigo, boolean encontrado, String nombre, Integer stockNuevo) {}
+
+    /**
+     * Ingreso de stock por lote (Excel): a diferencia de "Importar desde Excel"
+     * (que reemplaza el stock actual por el valor del archivo), esto SUMA la
+     * cantidad indicada al stock que el producto ya tenía — para cuando llega
+     * mercadería nueva, no para recargar el catálogo completo. Cada fila queda
+     * como un movimiento de inventario con la nota que se haya escrito
+     * (ej. "Pedido ingresado", "Corrección de inventario").
+     */
+    public List<ResultadoIngresoItem> ingresoStockPorLote(List<IngresoStockItem> items, String usuarioId) {
+        return items.stream().map(item -> {
+            Optional<Producto> op = productoRepository.findByCodigoIgnoreCase(item.codigo());
+            if (op.isEmpty()) return new ResultadoIngresoItem(item.codigo(), false, null, null);
+            Producto p = op.get();
+            p.stockActual += item.cantidad();
+            productoRepository.save(p);
+            registrarMovimiento(p.id, "ingreso", item.cantidad(), null, usuarioId, item.nota());
+            return new ResultadoIngresoItem(item.codigo(), true, p.nombre, p.stockActual);
+        }).toList();
     }
 }
